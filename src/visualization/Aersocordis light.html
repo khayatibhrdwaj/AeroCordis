@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AeroCordis · Clinical Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #f5f6f8;
+  --surface:  #ffffff;
+  --surface2: #f0f2f5;
+  --border:   #e2e6eb;
+  --border2:  #cdd3db;
+  --teal:     #0d9488;
+  --teal-lt:  #ccfbf1;
+  --teal-mid: #14b8a6;
+  --red:      #dc2626;
+  --red-lt:   #fee2e2;
+  --amber:    #d97706;
+  --amber-lt: #fef3c7;
+  --blue:     #2563eb;
+  --blue-lt:  #dbeafe;
+  --violet:   #7c3aed;
+  --violet-lt:#ede9fe;
+  --slate:    #334155;
+  --slate2:   #64748b;
+  --slate3:   #94a3b8;
+  --slate4:   #cbd5e1;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Lora', serif;
+  --sans: 'DM Sans', sans-serif;
+}
+
+html, body { height: 100%; font-family: var(--sans); background: var(--bg); color: var(--slate); }
+
+/* ─── LAYOUT ─────────────────────────────────────────── */
+#login-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+  transition: opacity 0.5s;
+}
+#login-screen.gone { opacity: 0; pointer-events: none; }
+
+.login-card {
+  width: 360px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 16px;
+  padding: 44px 36px; box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+.login-logo { font-family: var(--mono); font-size: 10px; letter-spacing: 3px; color: var(--teal); margin-bottom: 28px; }
+.login-title { font-family: var(--serif); font-size: 22px; color: var(--slate); margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: var(--slate2); margin-bottom: 28px; }
+.fl { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+.fl label { font-size: 11px; letter-spacing: 1.2px; color: var(--slate3); font-family: var(--mono); }
+.fl input {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 12px; font-size: 13px; color: var(--slate); font-family: var(--sans);
+  outline: none; transition: border-color 0.15s;
+}
+.fl input:focus { border-color: var(--teal); }
+.login-btn {
+  width: 100%; padding: 11px; background: var(--teal); border: none; border-radius: 8px;
+  color: #fff; font-family: var(--mono); font-size: 11px; letter-spacing: 2px; cursor: pointer;
+  transition: background 0.15s; margin-top: 4px;
+}
+.login-btn:hover { background: #0f766e; }
+
+#app { display: none; grid-template-columns: 200px 1fr; height: 100vh; }
+
+/* ─── SIDEBAR ─────────────────────────────────────────── */
+.sidebar {
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+.sb-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sb-logo-text { font-family: var(--mono); font-size: 11px; letter-spacing: 3px; color: var(--teal); font-weight: 500; }
+.sb-logo-sub { font-size: 10px; color: var(--slate3); margin-top: 2px; font-family: var(--mono); }
+
+.patient-chip {
+  margin: 12px 12px 0;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px;
+}
+.patient-name { font-size: 13px; font-weight: 600; color: var(--slate); }
+.patient-meta { font-size: 11px; color: var(--slate2); margin-top: 2px; }
+.live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #16a34a; margin-right: 4px; animation: blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.sb-section { padding: 16px 12px 4px; font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--slate3); }
+.nav-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+  cursor: pointer; font-size: 12.5px; color: var(--slate2);
+  border-left: 2px solid transparent; transition: all 0.12s; border-radius: 0 6px 6px 0;
+}
+.nav-item:hover { color: var(--slate); background: var(--bg); }
+.nav-item.active { color: var(--teal); border-left-color: var(--teal); background: var(--teal-lt); font-weight: 500; }
+
+.sb-footer { margin-top: auto; padding: 16px 12px; border-top: 1px solid var(--border); }
+.sync-btn {
+  width: 100%; padding: 8px; background: transparent; border: 1px solid var(--border);
+  border-radius: 7px; color: var(--teal); font-family: var(--mono); font-size: 10px;
+  letter-spacing: 1.5px; cursor: pointer; transition: background 0.12s;
+}
+.sync-btn:hover { background: var(--teal-lt); }
+.last-sync { text-align: center; font-size: 10px; color: var(--slate3); margin-top: 6px; font-family: var(--mono); }
+
+/* ─── MAIN ────────────────────────────────────────────── */
+.main { display: flex; flex-direction: column; overflow: hidden; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px; height: 52px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.topbar-title { font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; color: var(--slate2); }
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+.clock { font-family: var(--mono); font-size: 11px; color: var(--slate3); }
+.status-pill {
+  display: flex; align-items: center; gap: 5px; padding: 4px 10px;
+  background: #dcfce7; border-radius: 20px; font-size: 10px; color: #15803d;
+  font-family: var(--mono); letter-spacing: 1px;
+}
+
+.content { flex: 1; overflow-y: auto; padding: 24px 28px 80px; }
+
+/* ─── BOTTOM BAR ──────────────────────────────────────── */
+.botbar {
+  position: fixed; bottom: 0; left: 200px; right: 0; z-index: 50;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 8px 28px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.bot-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--slate2); }
+.bot-val { font-family: var(--mono); font-size: 12px; color: var(--slate); font-weight: 500; }
+.bot-phase { margin-left: auto; font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; }
+
+/* ─── TABS ────────────────────────────────────────────── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ─── METRIC CARDS ────────────────────────────────────── */
+.metric-grid { display: grid; gap: 14px; }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g2 { grid-template-columns: repeat(2, 1fr); }
+.g4 { grid-template-columns: repeat(4, 1fr); }
+.g5 { grid-template-columns: repeat(5, 1fr); }
+
+.mcard {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px 20px;
+  border-top: 3px solid transparent;
+}
+.mcard.c-teal { border-top-color: var(--teal); }
+.mcard.c-red { border-top-color: var(--red); }
+.mcard.c-blue { border-top-color: var(--blue); }
+.mcard.c-amber { border-top-color: var(--amber); }
+.mcard.c-violet { border-top-color: var(--violet); }
+.mcard.c-slate { border-top-color: var(--slate2); }
+.mcard.c-green { border-top-color: #16a34a; }
+
+.mcard-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--slate3); margin-bottom: 8px; }
+.mcard-value { font-size: 28px; font-weight: 600; line-height: 1; color: var(--slate); }
+.mcard-unit { font-size: 12px; font-weight: 400; color: var(--slate2); margin-left: 3px; }
+.mcard-sub { font-size: 11px; color: var(--slate3); margin-top: 6px; }
+.mcard-sub.ok { color: #16a34a; }
+.mcard-sub.warn { color: var(--amber); }
+.mcard-sub.crit { color: var(--red); }
+
+/* ─── SCENARIO BAR ────────────────────────────────────── */
+.scen-bar { display: flex; gap: 8px; margin-bottom: 20px; align-items: center; }
+.scen-label { font-size: 11px; color: var(--slate3); font-family: var(--mono); margin-right: 4px; }
+.scen-btn {
+  padding: 6px 14px; border-radius: 20px; font-family: var(--mono); font-size: 10px;
+  letter-spacing: 1px; cursor: pointer; border: 1px solid var(--border);
+  background: var(--surface); color: var(--slate2); transition: all 0.12s;
+}
+.scen-btn:hover { border-color: var(--teal); color: var(--teal); }
+.scen-btn.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+.scen-btn.pause-btn { border-color: var(--red); color: var(--red); background: var(--red-lt); }
+
+/* ─── CHART CARDS ─────────────────────────────────────── */
+.chart-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px;
+}
+.chart-title { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; color: var(--slate2); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+.chart-badge { font-family: var(--mono); font-size: 9px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; color: var(--slate3); }
+canvas.waveform { width: 100% !important; height: 72px !important; display: block; }
+canvas.waveform-lg { width: 100% !important; height: 130px !important; display: block; }
+
+/* ─── SECTION LABEL ───────────────────────────────────── */
+.section-lbl {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 2.5px; color: var(--slate3);
+  text-transform: uppercase; margin-bottom: 12px; margin-top: 24px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.section-lbl:first-child { margin-top: 0; }
+
+/* ─── COUPLING BARS ───────────────────────────────────── */
+.coup-table { display: flex; flex-direction: column; gap: 10px; }
+.coup-row { display: grid; grid-template-columns: 52px 1fr 42px; align-items: center; gap: 10px; }
+.coup-label { font-family: var(--mono); font-size: 10px; color: var(--slate3); }
+.coup-track { height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.coup-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.coup-val { font-family: var(--mono); font-size: 11px; font-weight: 500; text-align: right; }
+
+/* ─── INDEX BARS ──────────────────────────────────────── */
+.idx-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px;
+}
+.idx-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--slate3); margin-bottom: 8px; }
+.idx-val { font-size: 20px; font-weight: 600; color: var(--slate); margin-bottom: 8px; font-family: var(--mono); }
+.idx-sub { font-size: 11px; color: var(--slate3); }
+.idx-track { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin: 8px 0; }
+.idx-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.idx-ends { display: flex; justify-content: space-between; font-size: 10px; color: var(--slate3); font-family: var(--mono); }
+
+/* ─── ALERTS ──────────────────────────────────────────── */
+.alert-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; border-radius: 8px; margin-bottom: 8px;
+  font-size: 12.5px; border: 1px solid;
+}
+.alert-ok { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+.alert-warn { background: var(--amber-lt); border-color: #fde68a; color: #92400e; }
+.alert-crit { background: var(--red-lt); border-color: #fca5a5; color: var(--red); }
+.alert-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.a-ok { background: #16a34a; }
+.a-warn { background: var(--amber); }
+.a-crit { background: var(--red); animation: blink 1s infinite; }
+.alert-eta { margin-left: auto; font-family: var(--mono); font-size: 10px; opacity: 0.7; }
+
+/* ─── MANUAL FORM ─────────────────────────────────────── */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; color: var(--slate3); }
+.form-input {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 12px; font-size: 13px; color: var(--slate); font-family: var(--mono);
+  outline: none; transition: border-color 0.15s;
+}
+.form-input:focus { border-color: var(--teal); }
+.run-btn {
+  padding: 11px 24px; background: var(--teal); border: none; border-radius: 8px;
+  color: #fff; font-family: var(--mono); font-size: 10px; letter-spacing: 2px; cursor: pointer;
+  transition: background 0.15s;
+}
+.run-btn:hover { background: #0f766e; }
+.risk-out { padding: 14px 18px; border-radius: 10px; margin-top: 16px; font-size: 13px; display: none; }
+.risk-stable { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+.risk-crit { background: var(--red-lt); border: 1px solid #fca5a5; color: var(--red); }
+
+/* ─── WATCH PANEL ─────────────────────────────────────── */
+.watch-face {
+  width: 100px; height: 120px; background: var(--slate); border-radius: 26px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  margin: 0 auto 16px;
+}
+.wf-hr { font-family: var(--mono); font-size: 22px; color: #fff; font-weight: 500; }
+.wf-spo2 { font-family: var(--mono); font-size: 14px; color: var(--teal-mid); }
+.wf-label { font-size: 8px; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); font-family: var(--mono); }
+.connect-btn {
+  width: 100%; padding: 9px; background: transparent; border: 1px solid var(--border);
+  border-radius: 8px; color: var(--teal); font-family: var(--mono); font-size: 10px;
+  letter-spacing: 1.5px; cursor: pointer; transition: background 0.15s;
+}
+.connect-btn:hover { background: var(--teal-lt); }
+.connect-btn.connected { background: var(--teal-lt); border-color: var(--teal); }
+
+.watch-vitals tr { border-bottom: 1px solid var(--border); }
+.watch-vitals td { padding: 8px 0; font-size: 12px; }
+.watch-vitals .vname { color: var(--slate2); }
+.watch-vitals .vval { font-family: var(--mono); color: var(--slate); text-align: right; }
+
+/* ─── DONUT ───────────────────────────────────────────── */
+.donut-wrap { position: relative; width: 100px; height: 100px; margin: 8px auto 4px; }
+.donut-wrap svg { transform: rotate(-90deg); }
+.donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.donut-val { font-size: 22px; font-weight: 600; font-family: var(--mono); color: var(--slate); }
+.donut-unit { font-size: 10px; color: var(--slate3); }
+
+/* ─── SCROLLBAR ───────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ─────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">AEROCORDIS / PATIENT PORTAL</div>
+    <div class="login-title">Sign in</div>
+    <div class="login-sub">Enter your credentials to access the digital twin</div>
+    <div class="fl"><label>PATIENT ID</label><input id="pid" type="text" value="Khayati Bhrdwaj" /></div>
+    <div class="fl"><label>ACCESS KEY</label><input id="pwd" type="password" placeholder="Any key for demo" /></div>
+    <button class="login-btn" onclick="doLogin()">AUTHENTICATE →</button>
+  </div>
+</div>
+
+<!-- ── APP ───────────────────────────────────────────── -->
+<div id="app">
+  <nav class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-text">AEROCORDIS</div>
+      <div class="sb-logo-sub">CLINICAL TWIN v2.1</div>
+    </div>
+
+    <div class="patient-chip">
+      <div class="patient-name">Khayati Bhrdwaj</div>
+      <div class="patient-meta"><span class="live-dot"></span>Age 21 · Active</div>
+    </div>
+
+    <div class="sb-section">MONITORING</div>
+    <div class="nav-item active" onclick="switchTab('cardio',this)"><span>🫀</span> Cardio Vitals</div>
+    <div class="nav-item" onclick="switchTab('pulmonary',this)"><span>🫁</span> Pulmonary</div>
+    <div class="nav-item" onclick="switchTab('coupling',this)"><span>⚡</span> ECG Coupling</div>
+
+    <div class="sb-section">TOOLS</div>
+    <div class="nav-item" onclick="switchTab('manual',this)"><span>✍️</span> Manual Assessment</div>
+    <div class="nav-item" onclick="switchTab('watch',this)"><span>⌚</span> Smartwatch</div>
+    <div class="nav-item" onclick="switchTab('history',this)"><span>📊</span> Twin History</div>
+
+    <div class="sb-footer">
+      <button class="sync-btn" onclick="syncNow()">⟳ SYNC VITALS</button>
+      <div class="last-sync" id="sync-ts">Last sync: just now</div>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title" id="page-title">CARDIO VITALS</div>
+      </div>
+      <div class="topbar-right">
+        <div class="clock" id="clock">--:--:--</div>
+        <div class="status-pill"><span class="live-dot" style="width:5px;height:5px;margin:0"></span>LIVE</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- CARDIO TAB -->
+      <div class="tab-panel active" id="tab-cardio">
+        <div class="scen-bar">
+          <span class="scen-label">SCENARIO</span>
+          <button class="scen-btn active" onclick="setScenario('normal',this)">Normal</button>
+          <button class="scen-btn" onclick="setScenario('hypoxia',this)">Hypoxia</button>
+          <button class="scen-btn" onclick="setScenario('tachy',this)">Tachycardia</button>
+          <button class="scen-btn" onclick="setScenario('apnea',this)">Apnea</button>
+          <button class="scen-btn pause-btn" onclick="togglePause(this)">⏸ Pause</button>
+        </div>
+
+        <div class="metric-grid g3" style="margin-bottom:14px;">
+          <div class="mcard c-red">
+            <div class="mcard-label">HEART RATE</div>
+            <div class="mcard-value" id="v-hr">72<span class="mcard-unit">BPM</span></div>
+            <div class="mcard-sub" id="t-hr">Normal sinus rhythm</div>
+          </div>
+          <div class="mcard c-teal">
+            <div class="mcard-label">SpO₂</div>
+            <div class="mcard-value" id="v-spo2">98<span class="mcard-unit">%</span></div>
+            <div class="mcard-sub ok" id="t-spo2">Adequate</div>
+          </div>
+          <div class="mcard c-blue">
+            <div class="mcard-label">RESPIRATION RATE</div>
+            <div class="mcard-value" id="v-rr">15<span class="mcard-unit">br/min</span></div>
+            <div class="mcard-sub ok" id="t-rr">Normal</div>
+          </div>
+        </div>
+        <div class="metric-grid g3" style="margin-bottom:22px;">
+          <div class="mcard c-violet">
+            <div class="mcard-label">HRV (RMSSD)</div>
+            <div class="mcard-value" id="v-hrv">42<span class="mcard-unit">ms</span></div>
+            <div class="mcard-sub ok">Healthy variability</div>
+          </div>
+          <div class="mcard c-amber">
+            <div class="mcard-label">O₂ DELIVERY INDEX</div>
+            <div class="mcard-value" id="v-o2d">0.98<span class="mcard-unit">idx</span></div>
+            <div class="mcard-sub ok" id="t-o2d">Adequate</div>
+          </div>
+          <div class="mcard c-slate">
+            <div class="mcard-label">STRESS LOAD</div>
+            <div class="mcard-value" id="v-stress">19<span class="mcard-unit">/100</span></div>
+            <div class="mcard-sub ok" id="t-stress">Low</div>
+          </div>
+        </div>
+
+        <div class="section-lbl">WAVEFORMS</div>
+        <div class="metric-grid g2" style="margin-bottom:22px;">
+          <div class="chart-card">
+            <div class="chart-title">ECG II <span class="chart-badge" id="ecg-badge">NSR · 72 BPM</span></div>
+            <canvas id="ecgC" class="waveform"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">RESPIRATORY <span class="chart-badge" id="resp-badge">15 BR/MIN</span></div>
+            <canvas id="respC" class="waveform"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">SpO₂ PLETH <span class="chart-badge" id="pleth-badge">98%</span></div>
+            <canvas id="plethC" class="waveform"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">HRV · RR INTERVALS <span class="chart-badge" id="hrv-badge">RMSSD 42ms</span></div>
+            <canvas id="hrvC" class="waveform"></canvas>
+          </div>
+        </div>
+
+        <div class="section-lbl">PREDICTIVE ALERTS</div>
+        <div id="alert-spo2" class="alert-item alert-ok">
+          <div class="alert-dot a-ok" id="dot-spo2"></div>
+          <span id="txt-spo2">SpO₂ within safe range (98%). No alert predicted.</span>
+          <span class="alert-eta">ETA: —</span>
+        </div>
+        <div id="alert-hr" class="alert-item alert-ok">
+          <div class="alert-dot a-ok" id="dot-hr"></div>
+          <span id="txt-hr">Heart rate within safe range (72 bpm). No alert predicted.</span>
+          <span class="alert-eta">ETA: —</span>
+        </div>
+        <div id="alert-o2" class="alert-item alert-ok">
+          <div class="alert-dot a-ok" id="dot-o2"></div>
+          <span id="txt-o2">O₂ delivery adequate (0.98). Hypoxia risk: low.</span>
+          <span class="alert-eta">ETA: —</span>
+        </div>
+      </div>
+
+      <!-- PULMONARY TAB -->
+      <div class="tab-panel" id="tab-pulmonary">
+        <div class="metric-grid g3" style="margin-bottom:14px;">
+          <div class="mcard c-blue">
+            <div class="mcard-label">RESP RATE</div>
+            <div class="mcard-value" id="p-rr">15<span class="mcard-unit">RR</span></div>
+            <div class="mcard-sub ok">Normal</div>
+          </div>
+          <div class="mcard c-teal">
+            <div class="mcard-label">TIDAL VOLUME</div>
+            <div class="mcard-value" id="p-tv">480<span class="mcard-unit">ml</span></div>
+            <div class="mcard-sub ok">Spontaneous</div>
+          </div>
+          <div class="mcard c-violet">
+            <div class="mcard-label">COUPLING INDEX (PSI)</div>
+            <div class="mcard-value" id="p-ci">0.82<span class="mcard-unit">phase</span></div>
+            <div class="mcard-sub ok">Strong sync</div>
+          </div>
+        </div>
+        <div class="metric-grid g3" style="margin-bottom:22px;">
+          <div class="mcard c-amber">
+            <div class="mcard-label">EJECTION FRACTION</div>
+            <div class="mcard-value" id="p-ef">56<span class="mcard-unit">%</span></div>
+            <div class="mcard-sub ok">Normal EF</div>
+          </div>
+          <div class="mcard c-red">
+            <div class="mcard-label">CARDIAC OUTPUT</div>
+            <div class="mcard-value" id="p-co">5.2<span class="mcard-unit">L/min</span></div>
+            <div class="mcard-sub ok">Normal</div>
+          </div>
+          <div class="mcard c-green">
+            <div class="mcard-label">PEAK EXPIRATORY FLOW</div>
+            <div class="mcard-value" id="p-pef">420<span class="mcard-unit">L/min</span></div>
+            <div class="mcard-sub ok">Normal</div>
+          </div>
+        </div>
+
+        <div class="section-lbl">RESPIRATORY WAVEFORM</div>
+        <div class="chart-card" style="margin-bottom:22px;">
+          <canvas id="pulmC" class="waveform-lg"></canvas>
+        </div>
+
+        <div class="section-lbl">INDICES</div>
+        <div class="metric-grid g2">
+          <div class="idx-card">
+            <div class="idx-label">O₂ DELIVERY INDEX</div>
+            <div class="idx-val" id="o2-val">0.98</div>
+            <div class="idx-track"><div class="idx-fill" id="o2-fill" style="width:98%;background:var(--teal)"></div></div>
+            <div class="idx-ends"><span>Critical &lt;0.6</span><span>Optimal ≥0.95</span></div>
+          </div>
+          <div class="idx-card">
+            <div class="idx-label">STABILITY INDEX</div>
+            <div class="idx-val" id="stab-val">0.83</div>
+            <div class="idx-track"><div class="idx-fill" id="stab-fill" style="width:83%;background:var(--blue)"></div></div>
+            <div class="idx-ends"><span>Unstable 0</span><span>Stable 1.0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ECG COUPLING TAB -->
+      <div class="tab-panel" id="tab-coupling">
+        <div class="metric-grid g3" style="margin-bottom:22px;">
+          <div class="mcard c-teal">
+            <div class="mcard-label">RSA AMPLITUDE</div>
+            <div class="mcard-value" id="c-rsa">0.76<span class="mcard-unit">norm</span></div>
+            <div class="mcard-sub ok">Normal sinus arrhythmia</div>
+          </div>
+          <div class="mcard c-blue">
+            <div class="mcard-label">CROSS-CORR HR×RR</div>
+            <div class="mcard-value" id="c-xcorr">0.71<span class="mcard-unit">r</span></div>
+            <div class="mcard-sub ok">Coupled</div>
+          </div>
+          <div class="mcard c-violet">
+            <div class="mcard-label">PHASE SYNC INDEX</div>
+            <div class="mcard-value" id="c-psi">0.84<span class="mcard-unit">γ</span></div>
+            <div class="mcard-sub ok">Synchronised</div>
+          </div>
+        </div>
+
+        <div class="section-lbl">COUPLING WAVEFORMS</div>
+        <div class="metric-grid g3" style="margin-bottom:22px;">
+          <div class="chart-card">
+            <div class="chart-title">RSA · RESPIRATORY SINUS ARRHYTHMIA</div>
+            <canvas id="rsaC" class="waveform"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">CROSS-CORRELATION HR × RR</div>
+            <canvas id="xcorrC" class="waveform"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">PHASE SYNCHRONISATION INDEX</div>
+            <canvas id="psiC" class="waveform"></canvas>
+          </div>
+        </div>
+
+        <div class="section-lbl">COUPLING STRENGTH</div>
+        <div class="metric-grid g2" style="margin-bottom:22px;">
+          <div class="chart-card">
+            <div class="coup-table">
+              <div class="coup-row"><span class="coup-label">RSA</span><div class="coup-track"><div class="coup-fill" id="coup-rsa" style="width:76%;background:var(--amber)"></div></div><span class="coup-val" id="cv-rsa" style="color:var(--amber)">0.76</span></div>
+              <div class="coup-row"><span class="coup-label">PSI</span><div class="coup-track"><div class="coup-fill" id="coup-psi" style="width:84%;background:var(--teal)"></div></div><span class="coup-val" id="cv-psi" style="color:var(--teal)">0.84</span></div>
+              <div class="coup-row"><span class="coup-label">XCORR</span><div class="coup-track"><div class="coup-fill" id="coup-xcorr" style="width:71%;background:var(--blue)"></div></div><span class="coup-val" id="cv-xcorr" style="color:var(--blue)">0.71</span></div>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--slate3);line-height:1.7">n:m ratio ≈ 4.2:1 · XCorr lag: +1.8s</div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title" style="color:var(--red);font-size:9px;">⏱ PREDICTED TIME TO THRESHOLD</div>
+            <div id="eta-spo2" class="alert-item alert-ok" style="margin-bottom:6px;">
+              <div class="alert-dot a-ok"></div><span style="font-size:11px;">SpO₂ → Hypoxia (90%): <strong>Stable</strong></span>
+            </div>
+            <div id="eta-hr" class="alert-item alert-ok" style="margin-bottom:6px;">
+              <div class="alert-dot a-ok"></div><span style="font-size:11px;">HR → Tachycardia (140 bpm): <strong>Stable</strong></span>
+            </div>
+            <div id="eta-o2d" class="alert-item alert-ok">
+              <div class="alert-dot a-ok"></div><span style="font-size:11px;">O₂D → Critical (0.6): <strong>Stable</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-lbl">TREND HISTORY · 60 SECONDS</div>
+        <div class="chart-card">
+          <canvas id="trendC" class="waveform-lg"></canvas>
+          <div style="display:flex;gap:14px;margin-top:8px;font-size:10px;color:var(--slate3);font-family:var(--mono)">
+            <span><span style="color:var(--red)">■</span> HR</span>
+            <span><span style="color:var(--blue)">■</span> RR×5</span>
+            <span><span style="color:var(--teal)">■</span> SpO₂</span>
+            <span><span style="color:var(--amber)">■</span> O₂D×100</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MANUAL TAB -->
+      <div class="tab-panel" id="tab-manual">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:22px;font-size:13px;color:var(--slate2);line-height:1.7;">
+          Override live feed and run static predictive risk stratification. Values are pre-filled from the current twin state.
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">HEART RATE (BPM)</label><input class="form-input" type="number" id="m-hr" value="72" /></div>
+          <div class="form-group"><label class="form-label">SpO₂ (%)</label><input class="form-input" type="number" id="m-spo2" value="98" /></div>
+          <div class="form-group"><label class="form-label">RESP RATE (br/min)</label><input class="form-input" type="number" id="m-rr" value="15" /></div>
+          <div class="form-group"><label class="form-label">LACTATE (mmol/L)</label><input class="form-input" type="number" step="0.1" id="m-lac" value="1.5" /></div>
+          <div class="form-group"><label class="form-label">EJECTION FRACTION (%)</label><input class="form-input" type="number" id="m-ef" value="56" /></div>
+          <div class="form-group"><label class="form-label">TIDAL VOLUME (ml)</label><input class="form-input" type="number" id="m-tv" value="480" /></div>
+        </div>
+        <button class="run-btn" onclick="runRisk()">▶ RUN RISK STRATIFICATION</button>
+        <div class="risk-out" id="risk-out"></div>
+      </div>
+
+      <!-- WATCH TAB -->
+      <div class="tab-panel" id="tab-watch">
+        <div style="display:grid;grid-template-columns:220px 1fr;gap:20px;">
+          <div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 16px;text-align:center;">
+              <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--slate3);margin-bottom:12px;">CONNECTED DEVICE</div>
+              <div class="watch-face">
+                <div class="wf-label">HEART RATE</div>
+                <div class="wf-hr" id="w-hr">72</div>
+                <div class="wf-label">BPM</div>
+                <div style="width:30px;height:1px;background:rgba(255,255,255,0.15);margin:3px 0;"></div>
+                <div class="wf-spo2" id="w-spo2">98%</div>
+                <div class="wf-label">SpO₂</div>
+              </div>
+              <button class="connect-btn connected" id="watch-btn" onclick="toggleWatch(this)">✓ Connected (simulated)</button>
+              <div style="margin-top:14px;font-size:11px;color:var(--slate3);line-height:1.8;">
+                Bluetooth LE · ANT+<br>Garmin · Apple Health<br>WearOS · Polar
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px;">
+              <div class="section-lbl" style="margin-top:0;">LIVE WATCH VITALS</div>
+              <table class="watch-vitals" style="width:100%;border-collapse:collapse;">
+                <tr><td class="vname">Heart Rate</td><td class="vval" id="wv-hr">72 BPM</td></tr>
+                <tr><td class="vname">SpO₂</td><td class="vval" id="wv-spo2">98 %</td></tr>
+                <tr><td class="vname">Resp Rate (est.)</td><td class="vval" id="wv-rr">15 br/min</td></tr>
+                <tr><td class="vname">HRV (RMSSD)</td><td class="vval" id="wv-hrv">42 ms</td></tr>
+                <tr><td class="vname">Stress Score</td><td class="vval" id="wv-stress">19 / 100</td></tr>
+                <tr><td class="vname">Steps Today</td><td class="vval">4,312</td></tr>
+              </table>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">WATCH HR · LAST 2 MINUTES</div>
+              <canvas id="watchC" class="waveform-lg"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY TAB -->
+      <div class="tab-panel" id="tab-history">
+        <div class="metric-grid g3" style="margin-bottom:22px;">
+          <div class="mcard c-teal"><div class="mcard-label">AVG HEART RATE</div><div class="mcard-value">76<span class="mcard-unit">BPM</span></div></div>
+          <div class="mcard c-blue"><div class="mcard-label">MIN SpO₂ RECORDED</div><div class="mcard-value">95<span class="mcard-unit">%</span></div></div>
+          <div class="mcard c-amber"><div class="mcard-label">EVENTS LOGGED</div><div class="mcard-value">3<span class="mcard-unit">alerts</span></div></div>
+        </div>
+        <div class="section-lbl">24H ARCHIVE</div>
+        <div class="chart-card">
+          <canvas id="histC" style="width:100%!important;height:180px!important;display:block;"></canvas>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+
+    <!-- BOTTOM BAR -->
+    <div class="botbar">
+      <div class="bot-item"><span style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block;"></span>HR <span class="bot-val" id="bot-hr">72 bpm</span></div>
+      <div class="bot-item"><span style="width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;"></span>SpO₂ <span class="bot-val" id="bot-spo2">98%</span></div>
+      <div class="bot-item"><span style="width:7px;height:7px;border-radius:50%;background:var(--blue);display:inline-block;"></span>RR <span class="bot-val" id="bot-rr">15 br/min</span></div>
+      <div class="bot-item"><span style="width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block;"></span>O₂D <span class="bot-val" id="bot-o2d">0.98</span></div>
+      <div class="bot-item"><span style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;"></span>PSI <span class="bot-val" id="bot-psi">0.84</span></div>
+      <div class="bot-phase" id="bot-phase" style="color:var(--teal);">AeroCordis · STABLE</div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────
+const S = {
+  hr:72,rr:15,spo2:98,hrv:42,o2d:0.98,stress:19,
+  ef:56,co:5.2,tv:480,ci:0.82,pef:420,
+  rsa:0.76,xcorr:0.71,psi:0.84,
+  scenario:'normal',paused:false,watchConnected:true,tick:0
+};
+
+const SCENARIOS = {
+  normal:  {hr:72,  rr:15, spo2:98, stress:19, hrN:3, spo2N:0.5},
+  hypoxia: {hr:108, rr:24, spo2:88, stress:62, hrN:6, spo2N:1.5},
+  tachy:   {hr:138, rr:18, spo2:95, stress:72, hrN:10,spo2N:0.8},
+  apnea:   {hr:68,  rr:5,  spo2:92, stress:40, hrN:2, spo2N:2.0},
+};
+
+const BUF=80;
+function mkBuf(fn){return Array.from({length:BUF},(_,i)=>fn(i));}
+let ecgBuf=mkBuf(i=>ecgSample(i));
+let respBuf=mkBuf(i=>Math.sin(i*0.18)*30);
+let plethBuf=mkBuf(i=>Math.max(0,Math.sin(i*0.42-0.4))*40);
+let hrvBuf=mkBuf(i=>800+Math.sin(i*0.5)*50+Math.random()*20);
+let rsaBuf=mkBuf(i=>Math.sin(i*0.22)*0.3+0.5+Math.random()*0.1);
+let xcorrBuf=mkBuf(i=>Math.sin(i*0.15+0.4)*0.25+0.5+Math.random()*0.08);
+let psiBuf=mkBuf(i=>0.7+Math.sin(i*0.1)*0.15+Math.random()*0.05);
+let trendHr=mkBuf(i=>72+Math.random()*8-4);
+let trendO2=mkBuf(i=>98+Math.random()-0.5);
+let watchBuf=mkBuf(i=>72+Math.random()*6-3);
+let pulmBuf=mkBuf(i=>Math.sin(i*0.18)*30);
+let histBuf=mkBuf(i=>72+Math.sin(i*0.2)*12+Math.random()*4);
+
+function ecgSample(i){
+  const t=i%20;
+  if(t===7)return 60; if(t===8)return -15; if(t===9)return 80;
+  if(t===10)return -20; if(t===11)return 10;
+  if(t>=12&&t<=14)return Math.sin((t-12)*Math.PI/3)*12;
+  return (Math.random()-0.5)*4;
+}
+
+// ── CANVAS ─────────────────────────────────────────────────────────
+const WC = {};
+function initWave(id,buf,color,yMin,yMax){
+  const el=document.getElementById(id); if(!el)return;
+  el.width=el.parentElement.clientWidth-36; el.height=72;
+  WC[id]={el,buf,color,yMin,yMax};
+}
+function initWaveLg(id,buf,color,yMin,yMax){
+  const el=document.getElementById(id); if(!el)return;
+  el.width=el.parentElement.clientWidth-36; el.height=130;
+  WC[id]={el,buf,color,yMin,yMax};
+}
+function initTrend(id,datasets,h){
+  const el=document.getElementById(id); if(!el)return;
+  el.width=el.parentElement.clientWidth-36; el.height=h||130;
+  WC[id]={el,datasets,h:h||130};
+}
+function drawWave(id){
+  const w=WC[id]; if(!w||!w.el)return;
+  const{el,buf,color,yMin,yMax}=w, W=el.width, H=el.height;
+  const ctx=el.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.beginPath();
+  buf.forEach((v,i)=>{
+    const x=(i/(BUF-1))*W, y=H-((v-yMin)/(yMax-yMin))*H;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+}
+function drawTrend(id){
+  const w=WC[id]; if(!w||!w.el)return;
+  const{el,datasets}=w, W=el.width, H=el.height;
+  const ctx=el.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  (datasets||[]).forEach(({buf,color,yMin,yMax})=>{
+    ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.beginPath();
+    buf.forEach((v,i)=>{
+      const x=(i/(BUF-1))*W, y=H-((v-yMin)/(yMax-yMin))*H;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  });
+}
+function drawAll(){
+  ['ecgC','respC','plethC','hrvC','rsaC','xcorrC','psiC','pulmC','watchC','histC'].forEach(drawWave);
+  drawTrend('trendC');
+}
+function push(buf,val){buf.push(val);if(buf.length>BUF)buf.shift();}
+
+// ── SIMULATION ─────────────────────────────────────────────────────
+function simulate(){
+  if(S.paused)return;
+  S.tick++;
+  const sc=SCENARIOS[S.scenario];
+  const lerp=(cur,target,noise)=>cur+0.05*(target-cur)+(Math.random()-0.5)*noise;
+  S.hr=Math.round(Math.max(30,Math.min(200,lerp(S.hr,sc.hr,sc.hrN))));
+  S.spo2=Math.min(100,Math.max(70,parseFloat(lerp(S.spo2,sc.spo2,sc.spo2N).toFixed(1))));
+  S.rr=Math.max(2,Math.round(lerp(S.rr,sc.rr,0.5)));
+  S.hrv=Math.max(10,Math.round(42*(S.spo2/98)+(Math.random()-0.5)*4));
+  S.o2d=Math.min(1.2,Math.max(0.3,parseFloat((S.spo2/100*0.98+(Math.random()-0.5)*0.015).toFixed(3))));
+  S.stress=Math.round(Math.max(0,Math.min(100,lerp(S.stress,sc.stress,2))));
+  S.tv=Math.round(480*(S.rr<6?0.7:1)+(Math.random()-0.5)*15);
+  S.ci=parseFloat((0.82*(S.spo2/98)+(Math.random()-0.5)*0.03).toFixed(2));
+  S.psi=parseFloat((Math.min(1,0.84+Math.sin(S.tick*0.06)*0.06)).toFixed(2));
+  S.rsa=parseFloat((0.76*(S.hrv/42)+(Math.random()-0.5)*0.04).toFixed(2));
+  S.xcorr=parseFloat((Math.min(1,0.71+Math.sin(S.tick*0.07)*0.07)).toFixed(2));
+
+  const amp=S.scenario==='tachy'?1.4:1;
+  const t=S.tick%20;
+  let ev=0;
+  if(t===7)ev=60*amp;else if(t===8)ev=-15*amp;else if(t===9)ev=80*amp;
+  else if(t===10)ev=-20*amp;else if(t===11)ev=10;
+  else if(t>=12&&t<=14)ev=Math.sin((t-12)*Math.PI/3)*12;
+  else ev=(Math.random()-0.5)*4;
+  push(ecgBuf,ev);
+  push(respBuf,Math.sin(S.tick*(S.rr/80))*30);
+  push(plethBuf,Math.max(0,Math.sin(S.tick*(S.hr/600)-0.4))*40*(S.spo2/100));
+  push(hrvBuf,60000/S.hr+(Math.random()-0.5)*55);
+  push(rsaBuf,S.rsa+(Math.random()-0.5)*0.04);
+  push(xcorrBuf,S.xcorr+(Math.random()-0.5)*0.04);
+  push(psiBuf,S.psi+(Math.random()-0.5)*0.03);
+  push(trendHr,S.hr);push(trendO2,S.spo2);
+  push(watchBuf,S.hr+(Math.random()-0.5)*2);
+  push(pulmBuf,Math.sin(S.tick*(S.rr/80))*30);
+
+  updateUI();drawAll();
+}
+
+function updateUI(){
+  const C=v=>Math.round(v*100)/100;
+  // Cardio
+  $('v-hr').innerHTML=S.hr+'<span class="mcard-unit">BPM</span>';
+  $('v-spo2').innerHTML=S.spo2+'<span class="mcard-unit">%</span>';
+  $('v-rr').innerHTML=S.rr+'<span class="mcard-unit">br/min</span>';
+  $('v-hrv').innerHTML=S.hrv+'<span class="mcard-unit">ms</span>';
+  $('v-o2d').innerHTML=S.o2d.toFixed(2)+'<span class="mcard-unit">idx</span>';
+  $('v-stress').innerHTML=S.stress+'<span class="mcard-unit">/100</span>';
+  const hrStatus=S.hr>100?'warn':S.hr<55?'crit':'ok';
+  setSub('t-hr',S.hr>100?'Elevated':S.hr<55?'Bradycardic':'Normal sinus rhythm',hrStatus);
+  setSub('t-spo2',S.spo2<90?'CRITICAL':S.spo2<94?'Low':'Adequate',S.spo2<90?'crit':S.spo2<94?'warn':'ok');
+  setSub('t-rr',S.rr>20?'Tachypnoeic':S.rr<12?'Bradypnoeic':'Normal',S.rr>20||S.rr<12?'warn':'ok');
+  setSub('t-o2d',S.o2d<0.6?'CRITICAL':S.o2d<0.8?'Reduced':'Adequate',S.o2d<0.6?'crit':S.o2d<0.8?'warn':'ok');
+  setSub('t-stress',S.stress>70?'High':S.stress>40?'Moderate':'Low',S.stress>70?'warn':'ok');
+  $('ecg-badge').textContent=S.hr>100?'TACHY · '+S.hr+' BPM':S.hr<60?'BRADY · '+S.hr+' BPM':'NSR · '+S.hr+' BPM';
+  $('resp-badge').textContent=S.rr+' BR/MIN';
+  $('pleth-badge').textContent=S.spo2+'%';
+  $('hrv-badge').textContent='RMSSD '+S.hrv+'ms';
+  // Pulmonary
+  $('p-rr').innerHTML=S.rr+'<span class="mcard-unit">RR</span>';
+  $('p-tv').innerHTML=S.tv+'<span class="mcard-unit">ml</span>';
+  $('p-ci').innerHTML=S.ci.toFixed(2)+'<span class="mcard-unit">phase</span>';
+  const o2pct=Math.round(S.o2d*100);
+  $('o2-val').textContent=S.o2d.toFixed(2);
+  $('o2-fill').style.width=o2pct+'%';
+  $('o2-fill').style.background=S.o2d<0.6?'var(--red)':S.o2d<0.8?'var(--amber)':'var(--teal)';
+  $('stab-val').textContent=S.psi.toFixed(2);
+  $('stab-fill').style.width=Math.round(S.psi*100)+'%';
+  // Coupling
+  $('c-rsa').innerHTML=S.rsa.toFixed(2)+'<span class="mcard-unit">norm</span>';
+  $('c-xcorr').innerHTML=S.xcorr.toFixed(2)+'<span class="mcard-unit">r</span>';
+  $('c-psi').innerHTML=S.psi.toFixed(2)+'<span class="mcard-unit">γ</span>';
+  ['rsa','psi','xcorr'].forEach(k=>{
+    $('coup-'+k).style.width=Math.round(S[k]*100)+'%';
+    $('cv-'+k).textContent=S[k].toFixed(2);
+  });
+  // Alerts
+  updateAlert('alert-spo2','dot-spo2','txt-spo2',S.spo2<90,S.spo2<95,
+    'SpO₂ within safe range ('+S.spo2+'%). No alert predicted.',
+    'SpO₂ mildly low ('+S.spo2+'%). Monitor closely.',
+    'CRITICAL: SpO₂ dangerously low ('+S.spo2+'%).');
+  updateAlert('alert-hr','dot-hr','txt-hr',S.hr>130||S.hr<45,S.hr>100||S.hr<55,
+    'Heart rate within safe range ('+S.hr+' bpm).',
+    'Heart rate outside normal range ('+S.hr+' bpm).',
+    'CRITICAL: Heart rate dangerous ('+S.hr+' bpm).');
+  updateAlert('alert-o2','dot-o2','txt-o2',S.o2d<0.6,S.o2d<0.8,
+    'O₂ delivery adequate ('+S.o2d.toFixed(2)+'). Hypoxia risk: low.',
+    'O₂ delivery reduced ('+S.o2d.toFixed(2)+').',
+    'CRITICAL: O₂ delivery critically low ('+S.o2d.toFixed(2)+').');
+  // Watch
+  $('w-hr').textContent=S.hr; $('w-spo2').textContent=S.spo2+'%';
+  $('wv-hr').textContent=S.hr+' BPM';$('wv-spo2').textContent=S.spo2+' %';
+  $('wv-rr').textContent=S.rr+' br/min';$('wv-hrv').textContent=S.hrv+' ms';$('wv-stress').textContent=S.stress+' / 100';
+  // Botbar
+  $('bot-hr').textContent=S.hr+' bpm';$('bot-spo2').textContent=S.spo2+'%';
+  $('bot-rr').textContent=S.rr+' br/min';$('bot-o2d').textContent=S.o2d.toFixed(2);$('bot-psi').textContent=S.psi.toFixed(2);
+  const phase=S.spo2<90||S.hr>130?'CRITICAL':S.spo2<94||S.hr>100?'WARNING':'STABLE';
+  const pcol=phase==='CRITICAL'?'var(--red)':phase==='WARNING'?'var(--amber)':'var(--teal)';
+  $('bot-phase').textContent='AeroCordis · '+phase;$('bot-phase').style.color=pcol;
+  // Manual pre-fill
+  try{$('m-hr').value=S.hr;$('m-spo2').value=S.spo2;$('m-rr').value=S.rr;$('m-tv').value=S.tv;$('m-ef').value=S.ef;}catch(e){}
+}
+
+function setSub(id,txt,cls){const el=$(id);if(!el)return;el.textContent=txt;el.className='mcard-sub '+(cls||'ok');}
+function updateAlert(cardId,dotId,txtId,isCrit,isWarn,okT,warnT,critT){
+  const c=$(cardId),d=$(dotId),t=$(txtId);if(!c)return;
+  c.className='alert-item '+(isCrit?'alert-crit':isWarn?'alert-warn':'alert-ok');
+  d.className='alert-dot '+(isCrit?'a-crit':isWarn?'a-warn':'a-ok');
+  t.textContent=isCrit?critT:isWarn?warnT:okT;
+}
+function $(id){return document.getElementById(id);}
+
+// ── TABS ───────────────────────────────────────────────────────────
+function switchTab(name,el){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  $('tab-'+name).classList.add('active');
+  if(el)el.classList.add('active');
+  const titles={cardio:'CARDIO VITALS',pulmonary:'PULMONARY METRICS',coupling:'ECG COUPLING',manual:'MANUAL ASSESSMENT',watch:'SMARTWATCH',history:'TWIN HISTORY'};
+  $('page-title').textContent=titles[name]||name.toUpperCase();
+  setTimeout(()=>resizeAll(),30);
+}
+function setScenario(name,btn){
+  S.scenario=name;
+  document.querySelectorAll('.scen-btn:not(.pause-btn)').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+}
+function togglePause(btn){S.paused=!S.paused;btn.textContent=S.paused?'▶ Resume':'⏸ Pause';}
+function runRisk(){
+  const hr=+$('m-hr').value,spo2=+$('m-spo2').value,rr=+$('m-rr').value,lac=+$('m-lac').value,ef=+$('m-ef').value;
+  const risk=(hr/100)+(20/spo2)+(lac*0.5)+(rr>25?0.5:0)+(ef<40?0.4:0);
+  const el=$('risk-out');el.style.display='block';
+  if(risk>2.0){el.className='risk-out risk-crit';el.textContent='⚠ CRITICAL RISK (Score: '+risk.toFixed(2)+'). Probability of cardiopulmonary decoupling is HIGH. Immediate clinical review recommended.';}
+  else{el.className='risk-out risk-stable';el.textContent='✓ STABLE (Score: '+risk.toFixed(2)+'). No cardiopulmonary decoupling detected.';}
+}
+function toggleWatch(btn){
+  S.watchConnected=!S.watchConnected;
+  btn.textContent=S.watchConnected?'✓ Connected (simulated)':'⊕ Connect Smartwatch';
+  btn.className='connect-btn'+(S.watchConnected?' connected':'');
+}
+function syncNow(){const el=$('sync-ts');el.textContent='Syncing...';setTimeout(()=>{el.textContent='Last sync: '+new Date().toLocaleTimeString();},500);}
+function doLogin(){
+  const pwd=$('pwd').value;if(!pwd)return;
+  $('login-screen').classList.add('gone');
+  $('app').style.display='grid';
+  setTimeout(()=>{resizeAll();initWaves();startLoop();},80);
+}
+function updateClock(){$('clock').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false});}
+function resizeAll(){
+  const waveIds=['ecgC','respC','plethC','hrvC','rsaC','xcorrC','psiC'];
+  waveIds.forEach(id=>{const el=$(id);if(!el||!el.parentElement)return;el.width=el.parentElement.clientWidth-36;el.height=72;if(WC[id])WC[id].el=el;});
+  const lgIds=['pulmC','watchC','histC'];
+  lgIds.forEach(id=>{const el=$(id);if(!el||!el.parentElement)return;el.width=el.parentElement.clientWidth-36;el.height=130;if(WC[id])WC[id].el=el;});
+  const el=$('trendC');if(el&&el.parentElement){el.width=el.parentElement.clientWidth-36;el.height=130;if(WC['trendC'])WC['trendC'].el=el;}
+}
+function initWaves(){
+  WC['ecgC']={el:$('ecgC'),buf:ecgBuf,color:'#dc2626',yMin:-30,yMax:90};
+  WC['respC']={el:$('respC'),buf:respBuf,color:'#2563eb',yMin:-40,yMax:40};
+  WC['plethC']={el:$('plethC'),buf:plethBuf,color:'#7c3aed',yMin:-5,yMax:45};
+  WC['hrvC']={el:$('hrvC'),buf:hrvBuf,color:'#d97706',yMin:600,yMax:1100};
+  WC['rsaC']={el:$('rsaC'),buf:rsaBuf,color:'#d97706',yMin:0,yMax:1};
+  WC['xcorrC']={el:$('xcorrC'),buf:xcorrBuf,color:'#2563eb',yMin:0,yMax:1};
+  WC['psiC']={el:$('psiC'),buf:psiBuf,color:'#7c3aed',yMin:0,yMax:1};
+  WC['pulmC']={el:$('pulmC'),buf:pulmBuf,color:'#2563eb',yMin:-40,yMax:40};
+  WC['watchC']={el:$('watchC'),buf:watchBuf,color:'#dc2626',yMin:40,yMax:180};
+  WC['histC']={el:$('histC'),buf:histBuf,color:'#0d9488',yMin:40,yMax:160};
+  WC['trendC']={el:$('trendC'),datasets:[
+    {buf:trendHr,color:'#dc2626',yMin:40,yMax:180},
+    {buf:respBuf.map(v=>v+50),color:'#2563eb',yMin:0,yMax:100},
+    {buf:trendO2,color:'#0d9488',yMin:60,yMax:105},
+    {buf:trendO2.map(v=>v*0.95),color:'#d97706',yMin:60,yMax:105}
+  ]};
+}
+function startLoop(){setInterval(simulate,120);setInterval(updateClock,1000);updateClock();}
+updateClock();
+</script>
+</body>
+</html>

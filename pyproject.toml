@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "cardiopulmonary-twin"
+version = "1.0.0"
+description = "Physiologically-grounded digital twin for heart-lung coupling using MIMIC-IV"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "MIT" }
+
+dependencies = [
+    "numpy>=1.24.0",
+    "scipy>=1.11.0",
+    "pandas>=2.0.0",
+    "pyyaml>=6.0",
+    "loguru>=0.7.0",
+    "neurokit2>=0.2.7",
+    "wfdb>=4.1.0",
+    "streamlit>=1.27.0",
+    "plotly>=5.17.0",
+    "scikit-learn>=1.3.0",
+    "tqdm>=4.66.0",
+    "click>=8.1.0",
+]
+
+[project.optional-dependencies]
+ml = ["torch>=2.0.0"]
+mimic = ["wfdb>=4.1.0", "psycopg2-binary>=2.9.0", "google-cloud-bigquery>=3.11.0"]
+dev = ["pytest>=7.4.0", "pytest-cov>=4.1.0", "jupyter>=1.0.0"]
+
+[project.scripts]
+run-twin = "scripts.run_twin:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.pyright]
+include = ["src", "scripts", "tests"]
+extraPaths = ["."]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"

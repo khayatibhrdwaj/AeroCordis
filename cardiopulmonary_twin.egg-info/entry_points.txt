@@ -1,0 +1,2 @@
+[console_scripts]
+run-twin = scripts.run_twin:main

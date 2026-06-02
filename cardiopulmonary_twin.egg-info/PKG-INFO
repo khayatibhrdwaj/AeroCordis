@@ -1,0 +1,113 @@
+Metadata-Version: 2.4
+Name: cardiopulmonary-twin
+Version: 1.0.0
+Summary: Physiologically-grounded digital twin for heart-lung coupling using MIMIC-IV
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: scipy>=1.11.0
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: loguru>=0.7.0
+Requires-Dist: neurokit2>=0.2.7
+Requires-Dist: wfdb>=4.1.0
+Requires-Dist: streamlit>=1.27.0
+Requires-Dist: plotly>=5.17.0
+Requires-Dist: scikit-learn>=1.3.0
+Requires-Dist: tqdm>=4.66.0
+Requires-Dist: click>=8.1.0
+Provides-Extra: ml
+Requires-Dist: torch>=2.0.0; extra == "ml"
+Provides-Extra: mimic
+Requires-Dist: wfdb>=4.1.0; extra == "mimic"
+Requires-Dist: psycopg2-binary>=2.9.0; extra == "mimic"
+Requires-Dist: google-cloud-bigquery>=3.11.0; extra == "mimic"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: jupyter>=1.0.0; extra == "dev"
+
+# Cardiopulmonary Digital Twin
+
+A physiologically-grounded digital twin system for studying heart-lung coupling using MIMIC-IV waveform and clinical data.
+
+## Features
+
+- **ECG Feature Extraction**: PQRST detection, HRV (RMSSD, SDNN, pNN50, LF/HF), QT interval, ST deviation
+- **Respiratory Signal Processing**: Respiratory rate, tidal volume estimation, apnea detection
+- **SpO₂ & O₂ Delivery**: Relative oxygen delivery index, hypoxia trajectory modeling
+- **Heart-Lung Coupling**: RSA amplitude, HR×RR cross-correlation, phase synchronisation index (PSI)
+- **Predictive Alerting**: Linear + LSTM-based time-to-threshold estimation for SpO₂, HR, O₂ delivery
+- **MIMIC-IV Integration**: Waveform DB + clinical DB loaders via PhysioNet credentialed access
+- **Real-time Dashboard**: Streamlit dashboard with live waveform rendering and trend history
+- **Stability & Stress Indices**: Composite cardiopulmonary stability score and physiological stress load
+
+## Project Structure
+
+```
+cardiopulmonary-twin/
+├── src/
+│   ├── core/               # State machine, session manager, config
+│   ├── signals/            # ECG, respiratory, SpO2 signal processors
+│   ├── coupling/           # RSA, cross-correlation, phase sync
+│   ├── prediction/         # Alert prediction, LSTM model, trend analysis
+│   ├── data/               # MIMIC-IV loaders (waveform + clinical)
+│   ├── visualization/      # Streamlit dashboard, waveform plotters
+│   ├── alerts/             # Alert engine, threshold manager
+│   └── utils/              # Filtering, math helpers, logging
+├── tests/                  # Unit + integration tests
+├── config/                 # YAML configs for thresholds, model params
+├── notebooks/              # Jupyter exploration notebooks
+├── scripts/                # CLI tools for batch processing
+└── requirements.txt
+```
+
+## Setup
+
+### 1. Prerequisites
+
+- Python 3.10+
+- MIMIC-IV credentialed access via PhysioNet (https://physionet.org/content/mimiciv/)
+- MIMIC-IV Waveform Database access (https://physionet.org/content/mimic4wdb/)
+- VS Code with Python extension
+
+### 2. Install Dependencies
+
+```bash
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate        # Linux/macOS
+.venv\Scripts\activate           # Windows
+
+# Install all dependencies
+pip install -r requirements.txt
+```
+
+### 3. Configure MIMIC-IV Access
+
+```bash
+# Set your PhysioNet credentials
+cp config/credentials.example.yaml config/credentials.yaml
+# Edit config/credentials.yaml with your username + password
+```
+
+### 4. Run Dashboard
+
+```bash
+streamlit run src/visualization/dashboard.py
+```
+
+### 5. Run on a specific MIMIC-IV subject
+
+```bash
+python scripts/run_twin.py --subject-id 10000032 --stay-id 30000426
+```
+
+## Configuration
+
+Edit `config/twin_config.yaml` to adjust:
+- Alert thresholds (SpO₂ floor, HR bounds, O₂ delivery minimum)
+- Signal processing parameters (filter cutoffs, window sizes)
+- LSTM prediction horizon
+- Coupling analysis window length

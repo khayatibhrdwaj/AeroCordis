@@ -1,0 +1,161 @@
+# cardiopulmonary-twin/config/twin_config.yaml
+# Master configuration for the Cardiopulmonary Digital Twin
+
+twin:
+  version: "1.0.0"
+  name: "CardiopulmonaryDigitalTwin"
+  description: "Heart-lung coupling digital twin using MIMIC-IV"
+
+# ── Signal acquisition ─────────────────────────────────────────────────────────
+signals:
+  ecg:
+    sampling_rate: 125          # Hz — MIMIC-IV waveform default
+    lead: "II"
+    bandpass_low: 0.5           # Hz
+    bandpass_high: 40.0         # Hz
+    notch_freq: 60.0            # Hz powerline
+    qrs_min_distance_ms: 250    # Minimum RR interval for detection
+
+  respiratory:
+    sampling_rate: 62.5         # Hz (RESP channel in MIMIC-IV)
+    bandpass_low: 0.1           # Hz
+    bandpass_high: 1.0          # Hz (~60 br/min max)
+    apnea_threshold_s: 15       # Seconds without breath = apnea
+
+  spo2:
+    sampling_rate: 1            # Hz (numerics table)
+    min_valid: 50               # Below this, treat as artifact
+    baseline_window_s: 120      # Seconds for baseline estimation
+
+# ── HRV analysis ──────────────────────────────────────────────────────────────
+hrv:
+  window_s: 300                 # 5-minute windows (HRV standard)
+  overlap_s: 240                # 4-minute overlap (1-min step)
+  rmssd_normal_min: 20          # ms — lower = autonomic dysfunction
+  sdnn_normal_min: 50           # ms
+  pnn50_normal_min: 3           # %
+  lf_band: [0.04, 0.15]        # Hz
+  hf_band: [0.15, 0.40]        # Hz
+  ulf_band: [0.0, 0.0033]      # Hz
+  vlf_band: [0.0033, 0.04]     # Hz
+
+# ── Cardiopulmonary coupling ──────────────────────────────────────────────────
+coupling:
+  rsa:
+    bandpass_around_resp: 0.02  # Hz ± around dominant resp frequency
+    min_amplitude_bpm: 2.0      # Minimum RSA amplitude to be physiological
+  cross_correlation:
+    max_lag_s: 30               # Maximum lag to search in HR×RR xcorr
+    window_s: 120               # Sliding window for xcorr computation
+  phase_sync:
+    method: "hilbert"           # "hilbert" | "wavelet"
+    n_bins: 20                  # Phase bins for synchronisation index
+    window_s: 60                # PSI estimation window
+
+# ── Oxygen delivery model ─────────────────────────────────────────────────────
+oxygen:
+  # Simplified Fick-based relative O2 delivery:
+  # DO2_rel = (SpO2/100) * (HR/HR_baseline) * (SV_factor)
+  hr_baseline: 72               # bpm — reference cardiac output
+  sv_adjustment: true           # Adjust for stroke volume via HRV proxy
+  hgb_assumed: 14.0            # g/dL — if not available from labs
+  critical_threshold: 0.60      # Index below this = critical
+  warning_threshold: 0.80
+  optimal_threshold: 0.95
+
+# ── Stability & stress indices ────────────────────────────────────────────────
+indices:
+  stability:
+    hrv_weight: 0.30
+    psi_weight: 0.40
+    xcorr_weight: 0.30
+    # stability = hrv_norm*w1 + psi*w2 + xcorr_peak*w3
+  stress_load:
+    hr_weight: 0.30
+    rr_weight: 0.20
+    spo2_weight: 0.30
+    hrv_weight: 0.20
+    hr_ref_min: 60
+    hr_ref_max: 100
+    rr_ref_min: 12
+    rr_ref_max: 20
+
+# ── Alert thresholds ──────────────────────────────────────────────────────────
+alerts:
+  spo2:
+    critical: 90                # % — activate immediately
+    warning: 94                 # %
+    prediction_horizon_s: 300   # Predict 5 min ahead
+  heart_rate:
+    critical_low: 40            # bpm
+    warning_low: 50
+    warning_high: 110
+    critical_high: 140
+    prediction_horizon_s: 300
+  respiratory_rate:
+    critical_low: 6             # br/min
+    warning_low: 8
+    warning_high: 25
+    critical_high: 30
+  o2_delivery:
+    critical: 0.60
+    warning: 0.80
+  hypoxia_response:
+    # Hypoxia reflex: HR should rise when SpO2 falls
+    # If HR does NOT rise with falling SpO2 — blunted response alert
+    expected_hr_rise_per_spo2_fall: 1.5  # bpm per % SpO2 drop
+
+# ── Prediction model ──────────────────────────────────────────────────────────
+prediction:
+  method: "lstm"                # "linear" | "lstm" | "combined"
+  lstm:
+    hidden_size: 64
+    num_layers: 2
+    sequence_length: 60         # Input sequence in samples
+    dropout: 0.2
+    learning_rate: 0.001
+    epochs: 100
+    batch_size: 32
+  linear:
+    window_s: 30                # Rolling window for linear extrapolation
+  combined_weight_lstm: 0.7     # Blend: 0.7 LSTM + 0.3 linear
+
+# ── MIMIC-IV data access ──────────────────────────────────────────────────────
+mimic:
+  access_method: "physionet"    # "physionet" | "bigquery" | "local_postgres"
+  physionet:
+    base_url: "https://physionet.org/files/mimic4wdb/0.1.0/"
+    waveform_db: "mimic4wdb"
+    clinical_db: "mimiciv"
+  waveform_channels:
+    - "II"           # ECG Lead II
+    - "RESP"         # Respiratory
+    - "Pleth"        # SpO2 plethysmograph
+    - "ABP"          # Arterial blood pressure (optional)
+  numerics_columns:
+    - "heart rate"
+    - "respiratory rate"
+    - "spo2"
+    - "nbp mean"
+  chunk_size_s: 3600            # Load 1 hour at a time
+
+# ── Trend history ─────────────────────────────────────────────────────────────
+trends:
+  history_s: 3600               # 1 hour rolling history
+  resolution_s: 1               # 1-second granularity for storage
+  downsample_for_display_s: 5   # 5-second for dashboard display
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+dashboard:
+  update_interval_ms: 250       # 4 Hz refresh
+  waveform_window_s: 10         # Visible ECG/RESP/SpO2 window
+  trend_window_s: 300           # 5-min trend visible in chart
+  port: 8501
+
+# config/twin_config.yaml
+simulation:
+  mode: "mimic"             # Triggers the live PhysioNet stream
+  subject_id: "10014354"    # Real MIMIC-IV patient
+  stay_id: "81739927"       # Real ICU stay
+  max_chunks: 1200          # 5 minutes of streaming data
+  output_file: "session_log.csv"

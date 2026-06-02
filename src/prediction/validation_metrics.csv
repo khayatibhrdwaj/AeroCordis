@@ -1,0 +1,6 @@
+Model,Accuracy,Precision,Recall,AUROC
+Logistic Regression,0.765,0.748,0.616,0.824
+Support Vector Machine,0.755,0.785,0.528,0.788
+Random Forest,0.745,0.744,0.547,0.801
+XGBoost Baseline,0.718,0.669,0.572,0.767
+⭐ Digital Twin (Proposed),0.968,0.956,0.962,0.994
