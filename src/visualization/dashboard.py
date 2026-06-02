@@ -17,6 +17,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
+from auth import register_patient, authenticate
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -175,6 +176,45 @@ section[data-testid="stSidebar"] > div { background: #ffffff !important; }
     background: #ffffff;
     border: 1px solid #e2e6eb; border-radius: 16px; padding: 44px 36px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+
+/* ── Login / Register: white inputs, black text ── */
+.login-box input[type="text"],
+.login-box input[type="password"],
+.stTextInput input, .stNumberInput input {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #cccccc !important;
+}
+.stTextInput input::placeholder,
+.stNumberInput input::placeholder {
+    color: #888888 !important;
+}
+.stTextInput label, .stNumberInput label,
+.stSelectbox label, .stNumberInput label {
+    color: #000000 !important;
+    font-weight: 500 !important;
+}
+
+/* ── Register button: green → blue on hover ── */
+div[data-testid="stButton"]:has(button[kind="secondary"]).register-btn-wrap button {
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+    border: none !important;
+    transition: background-color 0.25s ease !important;
+}
+div[data-testid="stButton"]:has(button[kind="secondary"]).register-btn-wrap button:hover {
+    background-color: #1a73e8 !important;
+}
+
+/* ── Back to Login: blue with white text ── */
+div[data-testid="stButton"].back-btn-wrap button {
+    background-color: #1a73e8 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+div[data-testid="stButton"].back-btn-wrap button:hover {
+    background-color: #1558b0 !important;
 }
 
 /* ── Watch panel ── */
@@ -656,6 +696,13 @@ def view_register() -> None:
                 st.error("Access keys do not match.")
             else:
                 uid = _gen_uid()
+                register_patient(
+                    uid=uid,
+                    full_name=full_name.strip(),
+                    age=int(age),
+                    gender=st.session_state.reg_gender,
+                    password=pwd1,
+                )
                 st.session_state.patient_name = full_name.strip()
                 st.session_state.patient_age  = int(age)
                 st.session_state.patient_uid  = uid
@@ -684,7 +731,18 @@ def view_register() -> None:
 def view_login() -> None:
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
+        # ── Logo (outside the login box) ──────────────────────────────────────
+        logo_candidates = [
+            Path(__file__).parent / "aerocordis_logo.png",
+            Path(__file__).parent.parent / "aerocordis_logo.png",
+            Path.cwd() / "aerocordis_logo.png",
+        ]
+        logo_path = next((p for p in logo_candidates if p.exists()), None)
+        if logo_path:
+            st.image(str(logo_path), use_container_width=True)
+
         st.markdown('<div class="login-box">', unsafe_allow_html=True)
+
         st.markdown("""
             <div style="text-align:center;margin-bottom:24px">
                 <div style="font-size:2.5rem">🫀</div>
@@ -708,16 +766,19 @@ def view_login() -> None:
 
         if st.button("AUTHENTICATE & LAUNCH TWIN", use_container_width=True, type="primary"):
             if pid and pwd:
-                if not st.session_state.patient_name:
-                    st.session_state.patient_name = "Demo Patient"
-                    st.session_state.patient_age  = 30
-                    st.session_state.patient_uid  = pid
-                st.session_state.logged_in     = True
-                st.session_state.patient_id    = pid
-                st.session_state.current_tab   = "🫀 Cardio Vitals"
-                st.session_state.session_start = datetime.utcnow()
-                st.session_state.just_logged_in = True
-                st.rerun()
+                ok, record = authenticate(pid, pwd)
+                if ok and record:
+                    st.session_state.logged_in      = True
+                    st.session_state.patient_id     = pid
+                    st.session_state.patient_uid    = pid
+                    st.session_state.patient_name   = record["full_name"]
+                    st.session_state.patient_age    = record["age"]
+                    st.session_state.current_tab    = "🫀 Cardio Vitals"
+                    st.session_state.session_start  = datetime.utcnow()
+                    st.session_state.just_logged_in = True
+                    st.rerun()
+                else:
+                    st.error("Invalid Patient ID or Access Key. Please check your credentials.")
             else:
                 st.error("Enter both Patient ID and Access Key.")
 
@@ -726,9 +787,11 @@ def view_login() -> None:
             st.session_state.show_register = True
             st.rerun()
 
-        st.markdown("""<div style="text-align:center;margin-top:14px;color:#94a3b8;font-size:0.72rem;letter-spacing:1px">
-            MIMIC-IV CREDENTIALED ACCESS · PhysioNet<br>Demo: any ID + any key</div>""",
-            unsafe_allow_html=True)
+        st.markdown("""
+            <div style="text-align:center;margin-top:14px;color:#94a3b8;
+                        font-size:0.72rem;letter-spacing:1px">
+                MIMIC-IV CREDENTIALED ACCESS · PhysioNet
+            </div>""", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
 
