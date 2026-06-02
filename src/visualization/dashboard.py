@@ -731,7 +731,8 @@ def view_register() -> None:
 def view_login() -> None:
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
-        # ── Logo (outside the login box) ──────────────────────────────────────
+
+        # ── Logo (outside the login box, no white gap) ────────────────────────
         logo_candidates = [
             Path(__file__).parent / "aerocordis_logo.png",
             Path(__file__).parent.parent / "aerocordis_logo.png",
@@ -741,12 +742,10 @@ def view_login() -> None:
         if logo_path:
             st.image(str(logo_path), use_container_width=True)
 
-        st.markdown('<div class="login-box">', unsafe_allow_html=True)
-
+        # ── Login card ────────────────────────────────────────────────────────
         st.markdown("""
-            <div style="text-align:center;margin-bottom:24px">
-                <div style="font-size:2.5rem">🫀</div>
-                <div style="color:#1e293b;font-size:1.2rem;font-weight:700;margin-top:8px">
+            <div style="text-align:center;margin-bottom:24px;margin-top:8px">
+                <div style="color:#1e293b;font-size:1.2rem;font-weight:700;">
                     AEROCORDIS</div>
                 <div style="color:#94a3b8;font-size:0.8rem;margin-top:4px;letter-spacing:1.5px">
                     CARDIOPULMONARY MONITORING SYSTEM</div>
@@ -755,11 +754,11 @@ def view_login() -> None:
         if st.session_state.get("registered"):
             uid = st.session_state.patient_uid
             st.markdown(f"""
-            <div style="background:#f0fdf4;border:1px solid #bbf7d0;
-                        border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.78rem">
-                <b style="color:#16a34a">✓ Registration complete!</b><br>
-                <span style="color:#334155">Patient ID: <b style="color:#1e293b">{uid}</b></span>
-            </div>""", unsafe_allow_html=True)
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;
+                            border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.78rem">
+                    <b style="color:#16a34a">✓ Registration complete!</b><br>
+                    <span style="color:#334155">Patient ID: <b style="color:#1e293b">{uid}</b></span>
+                </div>""", unsafe_allow_html=True)
 
         pid = st.text_input("Patient ID", placeholder="Your system-generated ID", key="login_pid")
         pwd = st.text_input("Access Key", type="password", placeholder="Enter access key", key="login_pwd")
@@ -792,7 +791,6 @@ def view_login() -> None:
                         font-size:0.72rem;letter-spacing:1px">
                 MIMIC-IV CREDENTIALED ACCESS · PhysioNet
             </div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ── DASHBOARD ─────────────────────────────────────────────────────────────────
