@@ -229,6 +229,44 @@ div[data-testid="stButton"].back-btn-wrap button:hover {
     border: 1px solid #e2e6eb; border-radius: 12px; padding: 14px 16px;
 }
 
+/* ── New Patient button: green → blue on hover ── */
+div[data-testid="stButton"] button[kind="secondary"] {
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+    border: none !important;
+    transition: background-color 0.25s ease !important;
+}
+div[data-testid="stButton"] button[kind="secondary"]:hover {
+    background-color: #1a73e8 !important;
+}
+
+/* ── Selectbox dropdown: white background, black text ── */
+div[data-testid="stSelectbox"] > div > div {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #cccccc !important;
+}
+div[data-testid="stSelectbox"] span {
+    color: #000000 !important;
+}
+div[data-testid="stSelectbox"] > div > div > div:last-child {
+    background-color: #1e293b !important;
+    border-radius: 0 6px 6px 0 !important;
+    padding: 0 10px !important;
+}
+div[data-testid="stSelectbox"] svg {
+    fill: #ffffff !important;
+    color: #ffffff !important;
+}
+li[role="option"] {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+li[role="option"]:hover {
+    background-color: #f1f5f9 !important;
+    color: #000000 !important;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: #f5f6f8; }
@@ -671,11 +709,18 @@ def _gen_uid() -> str:
 def view_register() -> None:
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
-        st.markdown('<div class="login-box">', unsafe_allow_html=True)
+        logo_candidates = [
+            Path(__file__).parent / "aerocordis_logo.png",
+            Path(__file__).parent.parent / "aerocordis_logo.png",
+            Path.cwd() / "aerocordis_logo.png",
+        ]
+        logo_path = next((p for p in logo_candidates if p.exists()), None)
+        if logo_path:
+            st.image(str(logo_path), use_container_width=True)
+
         st.markdown("""
-            <div style="text-align:center;margin-bottom:24px">
-                <div style="font-size:2.5rem">🫀</div>
-                <div style="color:#1e293b;font-size:1.2rem;font-weight:700;margin-top:8px">
+            <div style="text-align:center;margin-bottom:24px;margin-top:8px">
+                <div style="color:#1e293b;font-size:1.2rem;font-weight:700;">
                     PATIENT REGISTRATION</div>
                 <div style="color:#94a3b8;font-size:0.8rem;margin-top:4px;letter-spacing:1.5px">
                     AEROCORDIS MONITORING SYSTEM</div>
@@ -724,7 +769,6 @@ def view_register() -> None:
         if st.button("← Back to Login", use_container_width=True):
             st.session_state.show_register = False
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ── LOGIN ─────────────────────────────────────────────────────────────────────
